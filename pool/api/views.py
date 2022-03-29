@@ -1,5 +1,10 @@
 from aiohttp import web
+from pool import db
 
 
 async def index(request):
-    return web.Response(text="Hello")
+    async with request.app["db"].acquire() as conn:
+        cursor = await conn.execute(db.player.select())
+        records = await cursor.fetchall()
+
+    return web.Response(text=str(records))

@@ -15,7 +15,6 @@ import sqlalchemy as sa
 @fixture(scope="module")
 def test_dsn():
     dsn = DSN.format(**CONFIG["postgres"])
-
     assert dsn == "postgresql://postgres:password@localhost:5432/pool"
     return dsn
 
