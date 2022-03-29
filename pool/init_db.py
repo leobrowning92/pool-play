@@ -1,5 +1,3 @@
-from string import ascii_lowercase
-from venv import create
 from sqlalchemy import create_engine, MetaData
 import sqlalchemy as sa
 from pool.db import player

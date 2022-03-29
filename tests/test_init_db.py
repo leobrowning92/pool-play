@@ -1,4 +1,3 @@
-from modulefinder import Module
 from pool.init_db import (
     DSN,
     create_engine,
