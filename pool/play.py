@@ -24,7 +24,6 @@ class Player:
     id: int
     name: str
     rating: float
-    rd: float
 
 
 def play_game(p1: Player, p2: Player) -> int:
