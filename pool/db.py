@@ -6,7 +6,7 @@ meta = MetaData()
 player = Table(
     "player",
     meta,
-    Column("id", Integer, primary_key=True),
+    Column("id", Integer, autoincrement=True, primary_key=True),
     Column("name", String(100), nullable=True),
     Column("rating", Float, nullable=False),
 )
@@ -14,7 +14,6 @@ player = Table(
 
 async def pg_context(app):
     conf = app["config"]["postgres"]
-    print(conf)
     engine = await aiopg.sa.create_engine(**conf)
     app["db"] = engine
     yield
