@@ -1,7 +1,26 @@
 from aiohttp import web
 from pool import db
+from pool.api.schema import PlayerSchema, result_schema
+
+from aiohttp.web import middleware
 
 routes = web.RouteTableDef()
+
+
+@middleware
+async def middleware(req, handler):
+    if hasattr(handler, "request_schema"):
+        req_data = await handler.request_schema().load(req.json())
+    else:
+        req_data = await req.json()
+
+    resp_data = await handler(req_data)
+
+    if hasattr(handler, "request_schema"):
+        resp = handler.request_schema().dump(resp_data.json())
+    else:
+        resp = resp_data
+    return resp
 
 
 async def get_all_records(conn):
@@ -44,6 +63,7 @@ async def add_player_handler(request):
 
 
 @routes.get("/player")
+@result_schema(PlayerSchema)
 async def get_player_handler(request):
     raw_data = await request.json()
     try:
