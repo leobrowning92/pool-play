@@ -6,9 +6,9 @@ import functools
 
 @dataclass
 class Player:
-    id: int
-    name: str
-    rating: float
+    id: int = None
+    name: str = None
+    rating: float = 350
 
 
 class PlayerSchema(Schema):
@@ -17,7 +17,7 @@ class PlayerSchema(Schema):
     rating = fields.Float()
 
     @post_load
-    def make_player(self, data: dict, **kwargs):
+    def make_player(self, data, **kwargs):
         return Player(**data)
 
 
@@ -33,13 +33,13 @@ def request_schema(schema: Schema) -> Callable:
     return dec_schema
 
 
-def result_schema(schema: Schema) -> Callable:
+def response_schema(schema: Schema) -> Callable:
     def dec_schema(func: Callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        wrapper.result_schema = schema
+        wrapper.response_schema = schema
         return wrapper
 
     return dec_schema

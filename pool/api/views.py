@@ -1,6 +1,6 @@
 from aiohttp import web
 from pool import db
-from pool.api.schema import PlayerSchema, result_schema
+from pool.api.schema import PlayerSchema, response_schema, request_schema
 
 from aiohttp.web import middleware
 
@@ -8,18 +8,23 @@ routes = web.RouteTableDef()
 
 
 @middleware
-async def middleware(req, handler):
-    if hasattr(handler, "request_schema"):
-        req_data = await handler.request_schema().load(req.json())
-    else:
-        req_data = await req.json()
+async def player_middleware(req, handler):
+    """if no schema is specified, assume handler
 
-    resp_data = await handler(req_data)
+    deals with request and response individually"""
 
     if hasattr(handler, "request_schema"):
-        resp = handler.request_schema().dump(resp_data.json())
-    else:
-        resp = resp_data
+        req_data = handler.request_schema().load(await req.json())
+        req.req_data = req_data
+
+    resp = await handler(req)
+
+    if hasattr(handler, "response_schema"):
+        resp_data = handler.response_schema().load(resp)
+        resp = web.Response(
+            text=str(handler.response_schema().dumps(resp_data)), status=200
+        )
+
     return resp
 
 
@@ -30,15 +35,19 @@ async def get_all_records(conn):
 
 
 async def add_player(conn, name, rating):
-    sql_string = "INSERT INTO player (name, rating) VALUES (%s, %s) RETURNING id;"
-    id = await conn.execute(sql_string, (name, rating))
-    return await id.fetchone()
+    sql_string = (
+        "INSERT INTO player (name, rating) VALUES (%s, %s) RETURNING id, name, rating;"
+    )
+    cursor = await conn.execute(sql_string, (name, rating))
+    player_row = await cursor.fetchall()
+    return player_row[0]
 
 
 async def get_player(conn, pid):
     sql_string = "SELECT * FROM player where id=%s"
-    player = await conn.execute(sql_string, pid)
-    return await player.fetchall()
+    cursor = await conn.execute(sql_string, pid)
+    player = await cursor.fetchall()
+    return player[0]
 
 
 @routes.get("/")
@@ -49,26 +58,20 @@ async def index_handler(request):
 
 
 @routes.post("/player")
-async def add_player_handler(request):
-    try:
-        raw_data = await request.json()
-        async with request.app["db"].acquire() as conn:
-
-            pid = await add_player(conn, raw_data["name"], raw_data["rating"])
-            return web.Response(
-                text=f"success player with {pid[0]} created", status=201
-            )
-    except Exception as e:
-        return web.Response(text=f"{e} for request {request}", status=500)
+@request_schema(PlayerSchema)
+@response_schema(PlayerSchema)
+async def add_player_handler(req):
+    player = req.req_data
+    async with req.app["db"].acquire() as conn:
+        player_row = await add_player(conn, player.name, player.rating)
+        player_dict = dict(player_row.items())
+        return player_dict
 
 
 @routes.get("/player")
-@result_schema(PlayerSchema)
+@response_schema(PlayerSchema)
 async def get_player_handler(request):
-    raw_data = await request.json()
-    try:
-        async with request.app["db"].acquire() as conn:
-            player = await get_player(conn, raw_data["id"])
-            return web.Response(text=str(player), status=200)
-    except Exception as e:
-        return web.Response(text=e, status=500)
+    async with request.app["db"].acquire() as conn:
+        player_row = await get_player(conn, request.query["id"])
+        player_dict = dict(player_row.items())
+        return player_dict

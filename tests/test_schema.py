@@ -10,7 +10,6 @@ def test_request_schema():
 
 
 def test_player_schema():
-
     json_blob = {"id": 1, "name": "test", "rating": 350}
     ps = PlayerSchema()
     player = ps.load(json_blob)
